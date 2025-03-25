@@ -481,3 +481,30 @@ How do you implement autoscaling in AKS?
 
 
 '''
+automated the deployment of AKS (Azure Kubernetes Service), Key Vault, and Service Principal using Terraform modules and Azure DevOps pipelines.
+===========================================================================
+'''
+"I have automated the deployment of AKS (Azure Kubernetes Service), Key Vault, and Service Principal using Terraform modules and Azure DevOps pipelines.
+
+1️⃣ Environment Setup
+Created Dev (deva) and Stage (stage) environments for controlled deployments.
+
+Used Terraform modules for AKS, Key Vault, and Service Principal to maintain reusable infrastructure code.
+
+2️⃣ CI/CD Pipeline Implementation
+Created two pipelines:
+1️⃣ Validation Pipeline (Triggered from feature branches for testing).
+2️⃣ Deployment Pipeline (Triggered from main to deploy to Dev and Stage).
+
+Added a condition in the pipeline to ensure deployments only proceed after a successful validation stage.
+
+3️⃣ Permissions & Security
+Key Vault Access → Assigned Admin & Contributor roles to Terraform state files for secure secret management.
+
+Service Principal Permissions → Granted Owner and Microsoft Graph API (all read/write) permissions to allow Terraform to manage Azure resources via Azure DevOps.
+
+SSH Key Management → Added id_rsa.pub paths to allow secure authentication for deployments.
+
+Outcome:
+This approach ensures automated, controlled, and secure deployments of AKS and Key Vault using best DevOps practices with Azure DevOps." 🚀
+'''
