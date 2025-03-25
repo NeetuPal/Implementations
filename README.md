@@ -288,3 +288,196 @@ Summarizing to the Interviewer
 
 
 '''
+Deploying an AKS Cluster Using Terraform Custom Modules
+===================================================================
+'''
+1️⃣ High-Level Overview
+"I deployed an Azure Kubernetes Service (AKS) cluster using Terraform custom modules to ensure modularity, reusability, and maintainability. The deployment was structured as follows:"
+
+✅ Tools Used:
+
+Azure CLI – For authentication and resource management.
+
+Git – Version control for Terraform code.
+
+Terraform – Infrastructure as Code (IaC) to provision resources.
+
+VS Code – Used as the development environment.
+
+2️⃣ Step-by-Step Explanation
+Step 1: Pre-requisites
+"I ensured that the necessary tools (az cli, terraform, git) were installed and authenticated with Azure using az login."
+
+Step 2: Created a Service Principal (SP) with RBAC
+Since Terraform needs authentication to manage Azure resources, I created a Service Principal (SP) with Contributor role:
+
+sh
+Copy
+Edit
+az ad sp create-for-rbac --name "terraform-sp" --role="Contributor" --scopes="/subscriptions/<SUBSCRIPTION_ID>"
+Exported SP credentials as environment variables for Terraform:
+
+sh
+Copy
+Edit
+export ARM_CLIENT_ID="xxxxxx"
+export ARM_CLIENT_SECRET="yyyyyy"
+export ARM_SUBSCRIPTION_ID="zzzzzz"
+export ARM_TENANT_ID="aaaaaa"
+Used these credentials in Terraform’s Azure provider configuration.
+
+Step 3: Created a Resource Group & Storage Account for Terraform State
+Since Terraform needs to store state files, I created:
+
+An Azure Resource Group.
+
+A Storage Account.
+
+A Blob Storage Container to store Terraform state.
+
+Terraform configuration for backend storage:
+
+hcl
+Copy
+Edit
+terraform {
+  backend "azurerm" {
+    resource_group_name   = "my-rg"
+    storage_account_name  = "mytfstate"
+    container_name        = "tfstate-container"
+    key                   = "terraform.tfstate"
+  }
+}
+Step 4: Created Terraform Custom Modules
+Modularized Infrastructure:
+
+SP Module: Created an Azure AD Service Principal.
+
+AKS Module: Provisioned the AKS cluster.
+
+Key Vault Module: Created a Key Vault to store sensitive credentials.
+
+📌 Example of Terraform Custom Module Structure:
+
+css
+Copy
+Edit
+terraform-aks/
+│── main.tf
+│── variables.tf
+│── outputs.tf
+│── modules/
+│   ├── aks/
+│   │   ├── main.tf
+│   │   ├── variables.tf
+│   │   ├── outputs.tf
+│   ├── keyvault/
+│   │   ├── main.tf
+│   │   ├── variables.tf
+│   │   ├── outputs.tf
+│   ├── service-principal/
+│       ├── main.tf
+│       ├── variables.tf
+│       ├── outputs.tf
+Step 5: Provisioned AKS Cluster Using Terraform
+Created an AKS cluster inside a private subnet.
+
+Defined node pools with min/max count for autoscaling.
+
+Enabled RBAC & Azure AD integration.
+
+📌 Example of Terraform Code for AKS Module (modules/aks/main.tf)
+
+h
+Copy
+Edit
+resource "azurerm_kubernetes_cluster" "aks" {
+  name                = var.cluster_name
+  location            = var.location
+  resource_group_name = var.resource_group_name
+  dns_prefix          = var.dns_prefix
+
+  default_node_pool {
+    name       = "default"
+    node_count = var.node_count
+    vm_size    = var.vm_size
+  }
+
+  identity {
+    type = "SystemAssigned"
+  }
+}
+📌 Using the AKS Module in main.tf
+
+hcl
+Copy
+Edit
+module "aks" {
+  source              = "./modules/aks"
+  cluster_name        = "my-aks-cluster"
+  location            = "East US"
+  resource_group_name = "my-rg"
+  node_count          = 3
+  vm_size             = "Standard_DS2_v2"
+}
+Step 6: Stored Secrets in Azure Key Vault
+After deploying the Service Principal, its credentials were stored in Azure Key Vault:
+
+hcl
+Copy
+Edit
+resource "azurerm_key_vault_secret" "client_secret" {
+  name         = "aks-client-secret"
+  value        = module.sp.client_secret
+  key_vault_id = module.keyvault.id
+}
+Step 7: Applied Terraform Configuration
+Ran Terraform Commands to Deploy Infrastructure:
+
+sh
+Copy
+Edit
+terraform init
+terraform plan
+terraform apply -auto-approve
+Step 8: Retrieved Kubeconfig and Connected to AKS
+Downloaded kubeconfig for connecting to AKS:
+
+sh
+Copy
+Edit
+az aks get-credentials --resource-group my-rg --name my-aks-cluster
+Verified AKS Cluster:
+
+sh
+Copy
+Edit
+kubectl get nodes
+3️⃣ Summary (for the Interviewer)
+"I deployed an Azure Kubernetes Service (AKS) cluster using Terraform custom modules for modularity and maintainability. My approach included:
+
+✔ Pre-requisites: Installed az cli, terraform, git, and vs code.
+✔ Authentication: Created a Service Principal with RBAC permissions.
+✔ State Management: Stored Terraform state in an Azure Storage Account.
+✔ Custom Modules: Used separate Terraform modules for AKS, Key Vault, and Service Principal.
+✔ Secure Secrets Storage: Stored sensitive credentials in Azure Key Vault.
+✔ Deployment: Used terraform apply to provision AKS with autoscaling & RBAC.
+✔ Validation: Retrieved kubeconfig and verified the cluster using kubectl.
+
+This modular approach improved scalability, security, and reusability across projects."
+
+🎯 Follow-up Questions an Interviewer Might Ask
+How did you handle role-based access control (RBAC) for AKS?
+→ Enabled RBAC in AKS, used Azure AD integration, and assigned least privilege roles.
+
+How do you ensure Terraform state security?
+→ Stored Terraform state in an Azure Storage Account with RBAC & encryption.
+
+How do you handle secrets in Terraform?
+→ Used Azure Key Vault and prevented hardcoding secrets in Terraform files.
+
+How do you implement autoscaling in AKS?
+→ Configured node pools with min/max count and enabled Horizontal Pod Autoscaler (HPA).
+
+
+'''
