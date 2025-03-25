@@ -130,3 +130,161 @@ Scalable, reproducible, and fully automated infrastructure
 "I DevOpsified a GoLang app hosted on GitHub by setting up a fully automated CI/CD pipeline with AWS EKS. First, I created the EKS cluster and tested the app locally before containerizing it. I deployed Kubernetes manifests manually and then optimized the deployment using Helm. Next, I integrated CI/CD using GitHub Actions to build, push, and update the image tag dynamically. Finally, I set up ArgoCD for GitOps-based automated deployments. This approach streamlined the deployment process, ensuring high availability, scalability, and repeatability."
 '''
 
+EKS and VPC Module Implementation in Terraform 
+===================================================================================================
+'''
+Explaining EKS and VPC Module Implementation in Terraform to an Interviewer
+When explaining your EKS and VPC module implementation using Terraform, focus on:
+✅ The high-level architecture (what you're building).
+✅ The key components (how they're structured).
+✅ Why specific configurations were used (best practices).
+
+Step-by-Step Explanation:
+1️⃣ Pre-requisites
+Before deploying EKS, we need the following installed on our local machine:
+
+Git (to clone the repository).
+
+AWS CLI (to interact with AWS services).
+
+Terraform (to provision infrastructure).
+
+2️⃣ Clone Terraform Code
+We start by cloning the Terraform repository from a version-controlled system like GitHub or Bitbucket:
+
+sh
+Copy
+Edit
+git clone <repo-url>
+cd terraform-eks-project
+This ensures we're working with the latest infrastructure as code (IaC).
+
+3️⃣ VPC Module Implementation
+We define a VPC module to create a secure networking layer:
+
+Public subnets for external-facing ELB (Application Load Balancer).
+
+Private subnets for internal EKS nodes and Internal Load Balancer (for security and cost efficiency).
+
+Example Terraform VPC module:
+
+hcl
+Copy
+Edit
+module "vpc" {
+  source  = "terraform-aws-modules/vpc/aws"
+  version = "3.14"
+
+  name = "eks-vpc"
+  cidr = "10.0.0.0/16"
+
+  azs             = ["us-east-1a", "us-east-1b"]
+  public_subnets  = ["10.0.1.0/24", "10.0.2.0/24"]
+  private_subnets = ["10.0.3.0/24", "10.0.4.0/24"]
+
+  enable_nat_gateway = true
+  enable_dns_hostnames = true
+}
+Why?
+✔️ Public subnets for ELB allow internet access to applications.
+✔️ Private subnets for EKS ensure worker nodes are secure and not publicly exposed.
+✔️ NAT Gateway allows private subnets to access the internet without exposing instances.
+
+4️⃣ Security Group for EKS Managed Nodes
+We create Security Groups to define access control for EKS worker nodes:
+
+Allows inbound traffic from EKS control plane.
+
+Allows outbound traffic to AWS services like S3.
+
+Example Security Group:
+
+hcl
+Copy
+Edit
+resource "aws_security_group" "eks_nodes" {
+  name_prefix = "eks-nodes-sg"
+  vpc_id      = module.vpc.vpc_id
+
+  ingress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+Why?
+✔️ Allows EKS worker nodes to communicate with the control plane securely.
+✔️ Restricts unnecessary access, following least privilege principle.
+
+5️⃣ Creating EKS Managed Node Group
+We define an EKS Managed Node Group to manage worker nodes efficiently:
+
+Min, max, and desired instances ensure scalability.
+
+Uses custom AMI and EC2 instance types for performance optimization.
+
+Example:
+
+hcl
+Copy
+Edit
+module "eks_node_group" {
+  source           = "terraform-aws-modules/eks/aws//modules/node_groups"
+  cluster_name     = module.eks.cluster_id
+  node_group_name  = "managed-ng"
+  
+  node_groups = {
+    managed_nodes = {
+      desired_capacity = 2
+      max_capacity     = 5
+      min_capacity     = 1
+
+      instance_types = ["t3.medium"]
+      ami_type       = "AL2_x86_64"
+    }
+  }
+}
+Why?
+✔️ Autoscaling ensures high availability.
+✔️ Uses Amazon Linux 2 AMI for optimized performance.
+✔️ t3.medium instances balance cost and performance.
+
+6️⃣ Deploying EKS in Private Subnets
+We create an EKS module and deploy it into private subnets for security:
+
+Uses a specific Kubernetes version for compatibility.
+
+Private subnets keep worker nodes protected from direct internet access.
+
+Example:
+
+hcl
+Copy
+Edit
+module "eks" {
+  source  = "terraform-aws-modules/eks/aws"
+  version = "18.0"
+
+  cluster_name    = "abhi-eks-cluster"
+  cluster_version = "1.27"
+
+  subnets         = module.vpc.private_subnets
+  vpc_id          = module.vpc.vpc_id
+}
+Why?
+✔️ Private subnets protect worker nodes from public exposure.
+✔️ Latest Kubernetes version ensures security and feature compatibility.
+
+Summarizing to the Interviewer
+💡 "In our Terraform setup, we implemented an EKS cluster with a custom VPC module. The VPC has public subnets for ELB and private subnets for worker nodes. Security Groups restrict access to nodes, and a Managed Node Group handles scaling. Finally, we deployed EKS in private subnets using a specific Kubernetes version for security and reliability."
+
+
+'''
